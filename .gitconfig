@@ -1,0 +1,3 @@
+[filter "fmt"]
+        clean = rustfmt --emit stdout
+        smudge = cat

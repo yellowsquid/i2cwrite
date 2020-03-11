@@ -1,0 +1,9 @@
+[package]
+name = "i2cwrite-raspi"
+version = "0.1.0"
+authors = ["Greg Brown <greg.brown.00@outlook.com>"]
+edition = "2018"
+license = "Apache-2.0 OR MIT"
+
+[dependencies]
+i2cwrite = { path = "..", version = "0.1.0" }
