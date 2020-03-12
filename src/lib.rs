@@ -1,6 +1,6 @@
 use embedded_hal::blocking::i2c::{self, Read};
 use std::cmp;
-use std::io::{self, Error};
+use std::io::{self, Error, ErrorKind};
 use std::thread;
 use std::time::Duration;
 
@@ -8,7 +8,7 @@ const BUFFER_WAIT: Duration = Duration::from_millis(4);
 
 /// Encodes a single byte of data.
 pub trait Encoding {
-    fn encode(&self, byte: u8) -> Vec<u8>;
+    fn encode(&self, byte: u8) -> Option<Vec<u8>>;
 }
 
 /// Wrapper trait for interoperability.
@@ -24,18 +24,24 @@ pub trait ReadWrite: Read + i2c::Write {
 pub struct I2cWriter<'a, T: ReadWrite> {
     encoding: &'a dyn Encoding,
     device: &'a mut T,
-    buffer: Vec<u8>,
     address: u8,
 }
 
 impl<'a, T: ReadWrite> io::Write for I2cWriter<'a, T> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let mut mapped = buf.iter().flat_map(|b| self.encoding.encode(*b)).collect();
-        self.buffer.append(&mut mapped);
+        let mut buffer = Vec::with_capacity(buf.len());
+        let iter = buf.iter().map(|b| self.encoding.encode(*b));
+
+        for opt in iter {
+            match opt {
+                Some(v) => buffer.extend(v.iter()),
+                None => return Err(Error::new(ErrorKind::InvalidData, "encoding failed")),
+            }
+        }
 
         let mut slave_buffer_size = [0];
 
-        while !self.buffer.is_empty() {
+        while !buffer.is_empty() {
             slave_buffer_size[0] = 0;
             self.device
                 .read(self.address, &mut slave_buffer_size)
@@ -44,12 +50,12 @@ impl<'a, T: ReadWrite> io::Write for I2cWriter<'a, T> {
             if slave_buffer_size[0] == 0 {
                 thread::sleep(BUFFER_WAIT);
             } else {
-                let take = cmp::min(slave_buffer_size[0].into(), self.buffer.len());
-                let remainder = self.buffer.split_off(take);
+                let take = cmp::min(slave_buffer_size[0].into(), buffer.len());
+                let remainder = buffer.split_off(take);
                 self.device
-                    .write(self.address, &self.buffer)
+                    .write(self.address, &buffer)
                     .map_err(T::convert_write_err)?;
-                self.buffer = remainder;
+                buffer = remainder;
             }
         }
 
@@ -67,7 +73,6 @@ impl<'a, T: ReadWrite> I2cWriter<'a, T> {
         Self {
             encoding,
             device,
-            buffer: Vec::new(),
             address,
         }
     }
@@ -84,8 +89,8 @@ mod tests {
     struct Identity;
 
     impl Encoding for Identity {
-        fn encode(&self, byte: u8) -> Vec<u8> {
-            vec![byte]
+        fn encode(&self, byte: u8) -> Option<Vec<u8>> {
+            Some(vec![byte])
         }
     }
 
