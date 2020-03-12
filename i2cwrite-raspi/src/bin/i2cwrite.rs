@@ -1,5 +1,6 @@
 use embedded_hal::blocking::i2c::{self as hal, Read};
-use i2cwrite::{Encoding, I2cWriter, ReadWrite};
+use i2cwrite::{I2cWriter, ReadWrite};
+use i2cwrite_raspi::ScanCodeSet;
 use rppal::i2c::{self, I2c};
 use std::io::{self, ErrorKind};
 use std::sync::Mutex;
@@ -7,10 +8,11 @@ use std::sync::Mutex;
 fn main() {
     let mut input = io::stdin();
     let mut rw = WrapI2c::new(I2c::new().expect("cannot find i2c device"));
-    let mut output = I2cWriter::new(&Identity, &mut rw, 4);
+    let mut output = I2cWriter::new(&ScanCodeSet::Set2, &mut rw, 4);
     io::copy(&mut input, &mut output).expect("failed to write data");
 }
 
+/// Wrapper around [`I2c`] to fit the new interface.
 struct WrapI2c {
     lock: Mutex<I2c>,
 }
@@ -67,13 +69,5 @@ impl WrapI2c {
         Self {
             lock: Mutex::new(i2c),
         }
-    }
-}
-
-struct Identity;
-
-impl Encoding for Identity {
-    fn encode(&self, byte: u8) -> Vec<u8> {
-        vec![byte]
     }
 }
