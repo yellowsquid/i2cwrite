@@ -10,3 +10,6 @@ members = ["i2cwrite-raspi"]
 
 [dependencies]
 embedded-hal = "0.2"
+
+[dev-dependencies]
+proptest = "0.9"
