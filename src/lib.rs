@@ -7,7 +7,7 @@ use std::time::Duration;
 const BUFFER_WAIT: Duration = Duration::from_millis(4);
 
 /// Encodes a single byte of data.
-trait Encoding {
+pub trait Encoding {
     fn encode(&self, byte: u8) -> Vec<u8>;
 }
 
@@ -15,13 +15,13 @@ trait Encoding {
 ///
 /// Reading from this returns the number of bytes free in the slave buffer. Writing sends data to
 /// the slave. The slave will never have 0 bytes written.
-trait ReadWrite: Read + i2c::Write {
+pub trait ReadWrite: Read + i2c::Write {
     fn convert_read_err(error: <Self as Read>::Error) -> Error;
     fn convert_write_err(error: <Self as i2c::Write>::Error) -> Error;
 }
 
 /// Writes data to an I2C slave at a given address.
-struct I2cWriter<'a, T: ReadWrite> {
+pub struct I2cWriter<'a, T: ReadWrite> {
     encoding: &'a dyn Encoding,
     device: &'a mut T,
     buffer: Vec<u8>,
