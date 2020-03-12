@@ -9,3 +9,4 @@ license = "Apache-2.0 OR MIT"
 members = ["i2cwrite-raspi"]
 
 [dependencies]
+embedded-hal = "0.2"
